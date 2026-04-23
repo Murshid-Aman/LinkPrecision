@@ -35,7 +35,7 @@ No guessing. Just trusting the right signals.
 ### 1. Clone
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/linkprecision.git
+git clone https://github.com/Murshid-Aman/linkprecision.git
 cd linkprecision
 ```
 
