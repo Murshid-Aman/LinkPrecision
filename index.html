@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Link Precision — Clean URL Resolver</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap"
+    rel="stylesheet">
+
+  <style>
+    /* ─── CSS VARIABLES ─────────────────────────────────────── */
+    :root {
+      --primary: #0061FF;
+      --primary-hover: #0050d6;
+      --primary-subtle: rgba(0, 97, 255, 0.08);
+      --primary-container: #0061FF;
+      --on-primary-container: #F1F2FF;
+
+      --surface: #FAF8FF;
+      --surface-container-low: #F2F3FF;
+      --surface-container: #ECEDFA;
+      --surface-container-high: #E4E5F5;
+      --surface-container-highest: #E1E1EE;
+
+      --outline-variant: #C2C6D9;
+      --outline: #8C91AD;
+
+      --on-surface: #191B24;
+      --on-surface-variant: #424656;
+      --on-surface-muted: #7A7F96;
+
+      --error-container: #FFDAD6;
+      --on-error-container: #410002;
+
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+      --radius-pill: 9999px;
+
+      --shadow-xs: 0 1px 3px rgba(0, 0, 0, .06);
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, .08);
+      --shadow-md: 0 4px 20px rgba(0, 0, 0, .10);
+      --shadow-lg: 0 8px 40px rgba(0, 0, 0, .13);
+
+      --nav-height: 64px;
+    }
+
+    [data-theme="dark"] {
+      --primary: #AEC6FF;
+      --primary-hover: #c6d8ff;
+      --primary-subtle: rgba(174, 198, 255, 0.10);
+      --primary-container: #0046C0;
+      --on-primary-container: #D8E2FF;
+
+      --surface: #111318;
+      --surface-container-low: #191C20;
+      --surface-container: #1D2024;
+      --surface-container-high: #25282E;
+      --surface-container-highest: #33353A;
+
+      --outline-variant: #44474E;
+      --outline: #6B7280;
+
+      --on-surface: #E2E2E9;
+      --on-surface-variant: #C4C6D0;
+      --on-surface-muted: #888CA0;
+
+      --error-container: #93000A;
+      --on-error-container: #FFDAD6;
+
+      --shadow-xs: 0 1px 3px rgba(0, 0, 0, .25);
+      --shadow-sm: 0 2px 8px rgba(0, 0, 0, .30);
+      --shadow-md: 0 4px 20px rgba(0, 0, 0, .35);
+      --shadow-lg: 0 8px 40px rgba(0, 0, 0, .45);
+    }
+
+    /* ─── RESET & BASE ──────────────────────────────────────── */
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background-color: var(--surface);
+      color: var(--on-surface);
+      min-height: 100vh;
+      transition: background-color .3s, color .3s;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+
+    h1,
+    h2,
+    h3,
+    h4 {
+      font-family: 'Outfit', system-ui, sans-serif;
+      letter-spacing: -0.025em;
+    }
+
+    a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    /* ─── TOP NAV (desktop + tablet) ───────────────────────── */
+    .top-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: var(--nav-height);
+      background-color: var(--surface);
+      border-bottom: 1px solid var(--outline-variant);
+      display: flex;
+      align-items: center;
+      padding: 0 max(1.5rem, calc((100% - 1140px) / 2 + 1.5rem));
+      gap: 2rem;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: background-color .3s, border-color .3s;
+    }
+
+    /* subtle glass on scroll — JS adds .scrolled */
+    .top-nav.scrolled {
+      background-color: color-mix(in srgb, var(--surface) 85%, transparent);
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      text-decoration: none;
+      color: var(--on-surface);
+      font-family: 'Outfit', system-ui, sans-serif;
+      font-weight: 800;
+      font-size: 1.1rem;
+      letter-spacing: -0.04em;
+    }
+
+    .nav-brand-icon {
+      width: 30px;
+      height: 30px;
+      background: var(--primary-container);
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      font-size: 0.9rem;
+      color: var(--on-primary-container);
+      flex-shrink: 0;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 0.25rem;
+      list-style: none;
+      margin-left: 0.5rem;
+    }
+
+    .nav-links li a,
+    .nav-links li button {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.45rem 0.85rem;
+      border-radius: var(--radius-pill);
+      font-size: 0.875rem;
+      font-weight: 600;
+      color: var(--on-surface-variant);
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: inherit;
+      transition: background .18s, color .18s;
+      text-decoration: none;
+    }
+
+    .nav-links li a:hover,
+    .nav-links li button:hover {
+      background: var(--surface-container);
+      color: var(--on-surface);
+      text-decoration: none;
+    }
+
+    .nav-links li a.active,
+    .nav-links li button.active {
+      background: var(--primary-subtle);
+      color: var(--primary);
+    }
+
+    .nav-spacer {
+      flex: 1;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .icon-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--outline-variant);
+      background: none;
+      color: var(--on-surface-variant);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      font-size: 1rem;
+      transition: background .18s, color .18s, border-color .18s;
+    }
+
+    .icon-btn:hover {
+      background: var(--surface-container);
+      color: var(--on-surface);
+    }
+
+    /* ─── BOTTOM NAV (mobile only) ──────────────────────────── */
+    .bottom-nav {
+      display: none;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 64px;
+      background: var(--surface-container);
+      border-top: 1px solid var(--outline-variant);
+      z-index: 100;
+      align-items: stretch;
+    }
+
+    .bnav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      cursor: pointer;
+      color: var(--on-surface-muted);
+      border: none;
+      background: none;
+      font-family: inherit;
+      transition: color .2s;
+    }
+
+    .bnav-item.active {
+      color: var(--primary);
+    }
+
+    .bnav-item svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .bnav-label {
+      font-size: 0.68rem;
+      font-weight: 600;
+    }
+
+    /* ─── LAYOUT WRAPPER ────────────────────────────────────── */
+    .page-wrapper {
+      max-width: 1140px;
+      margin: 0 auto;
+      padding: 2.5rem 1.5rem 5rem;
+    }
+
+    /* Tab visibility */
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+      animation: fadeUp .3s ease forwards;
+    }
+
+    @keyframes fadeUp {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* ─── HERO STRIP (Resolve tab) ──────────────────────────── */
+    .hero-strip {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .hero-strip h1 {
+      font-size: clamp(1.8rem, 4vw, 2.75rem);
+      font-weight: 800;
+      line-height: 1.15;
+      margin-bottom: 0.6rem;
+    }
+
+    .hero-strip p {
+      font-size: 1rem;
+      color: var(--on-surface-variant);
+      max-width: 480px;
+      margin: 0 auto;
+    }
+
+    .gradient-text {
+      background: linear-gradient(135deg, var(--primary) 0%, #7B8CFF 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* ─── RESOLVE LAYOUT: two-col on desktop ────────────────── */
+    .resolve-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.75rem;
+      align-items: start;
+    }
+
+    @media (max-width: 860px) {
+      .resolve-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ─── INPUT CARD ────────────────────────────────────────── */
+    .input-card {
+      background: var(--surface-container-low);
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--radius-xl);
+      padding: 1.5rem;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .input-card-title {
+      font-family: 'Outfit', system-ui, sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+    }
+
+    .url-input-wrap {
+      position: relative;
+      margin-bottom: 1rem;
+    }
+
+    .url-input-icon {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--on-surface-muted);
+      pointer-events: none;
+    }
+
+    .url-input {
+      width: 100%;
+      padding: 0.9rem 1rem 0.9rem 2.6rem;
+      border-radius: var(--radius-md);
+      border: 1.5px solid var(--outline-variant);
+      background: var(--surface);
+      color: var(--on-surface);
+      font-family: 'Plus Jakarta Sans', monospace;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+
+    .url-input::placeholder {
+      color: var(--on-surface-muted);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .url-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px var(--primary-subtle);
+    }
+
+    .input-actions {
+      display: flex;
+      gap: 0.6rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.4rem;
+      padding: 0.75rem 1.25rem;
+      border-radius: var(--radius-pill);
+      border: none;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background .18s, opacity .18s, transform .15s, box-shadow .18s;
+      white-space: nowrap;
+    }
+
+    .btn:active {
+      transform: scale(0.97);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    .btn-primary {
+      flex: 1;
+      background: var(--primary-container);
+      color: var(--on-primary-container);
+      box-shadow: 0 2px 10px rgba(0, 97, 255, .25);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      background: var(--primary-hover);
+      box-shadow: 0 4px 16px rgba(0, 97, 255, .35);
+    }
+
+    .btn-outline {
+      background: var(--surface);
+      border: 1.5px solid var(--outline-variant);
+      color: var(--on-surface);
+    }
+
+    .btn-outline:hover {
+      background: var(--surface-container);
+    }
+
+    .btn-ghost {
+      background: none;
+      color: var(--on-surface-variant);
+      padding: 0.75rem;
+    }
+
+    .btn-ghost:hover {
+      background: var(--surface-container);
+      color: var(--on-surface);
+    }
+
+    /* Tips inside input card */
+    .resolve-tips {
+      margin-top: 1.25rem;
+      padding-top: 1.25rem;
+      border-top: 1px solid var(--outline-variant);
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+
+    .tip-row {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.8rem;
+      color: var(--on-surface-muted);
+    }
+
+    .tip-badge {
+      background: var(--surface-container-highest);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--on-surface-variant);
+      flex-shrink: 0;
+    }
+
+    /* ─── SPINNER ───────────────────────────────────────────── */
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+    }
+
+    @keyframes spin {
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* ─── RESULT PANEL ──────────────────────────────────────── */
+    .result-panel {
+      position: relative;
+    }
+
+    .result-placeholder {
+      height: 100%;
+      min-height: 260px;
+      border: 2px dashed var(--outline-variant);
+      border-radius: var(--radius-xl);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      color: var(--on-surface-muted);
+      font-size: 0.875rem;
+      text-align: center;
+      padding: 2rem;
+    }
+
+    .result-placeholder .ph-icon {
+      font-size: 2.5rem;
+      opacity: 0.4;
+    }
+
+    /* ─── PREVIEW CARD ──────────────────────────────────────── */
+    .preview-card {
+      background: var(--surface-container-low);
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      animation: fadeUp .25s ease forwards;
+    }
+
+    .preview-og-img {
+      width: 100%;
+      max-height: 200px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .preview-body {
+      padding: 1.25rem;
+    }
+
+    .preview-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin-bottom: 0.85rem;
+    }
+
+    .avatar-circle {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--primary-container);
+      display: grid;
+      place-items: center;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 1rem;
+      color: var(--on-primary-container);
+      overflow: hidden;
+    }
+
+    .avatar-circle img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+
+    .preview-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .domain-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--primary-subtle);
+      color: var(--primary);
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 2px 8px;
+      border-radius: var(--radius-pill);
+      margin-bottom: 0.3rem;
+    }
+
+    .preview-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1.3;
+      margin-bottom: 0.15rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .preview-desc {
+      font-size: 0.825rem;
+      color: var(--on-surface-variant);
+      margin-bottom: 1rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .clean-url-strip {
+      background: var(--surface-container-highest);
+      border-radius: var(--radius-md);
+      padding: 0.75rem 1rem;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .clean-url-strip .url-text {
+      flex: 1;
+      font-size: 0.78rem;
+      word-break: break-all;
+      color: var(--on-surface-variant);
+    }
+
+    .copy-inline-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--primary);
+      font-size: 0.8rem;
+      font-weight: 600;
+      font-family: inherit;
+      flex-shrink: 0;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: background .15s;
+    }
+
+    .copy-inline-btn:hover {
+      background: var(--primary-subtle);
+    }
+
+    .preview-cta-row {
+      display: flex;
+      gap: 0.6rem;
+    }
+
+    .preview-cta-row .btn {
+      flex: 1;
+      font-size: 0.85rem;
+      padding: 0.7rem 1rem;
+    }
+
+    /* ─── ERROR CARD ────────────────────────────────────────── */
+    .error-card {
+      background: var(--error-container);
+      color: var(--on-error-container);
+      border-radius: var(--radius-xl);
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      animation: fadeUp .25s ease forwards;
+    }
+
+    .error-card-icon {
+      font-size: 1.3rem;
+      flex-shrink: 0;
+    }
+
+    /* ─── HISTORY TAB ───────────────────────────────────────── */
+    .history-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .history-header-row h2 {
+      font-size: 1.5rem;
+      font-weight: 800;
+    }
+
+    .history-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+
+    @media (max-width: 480px) {
+      .history-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .history-card {
+      background: var(--surface-container-low);
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform .2s, box-shadow .2s, border-color .2s;
+    }
+
+    .history-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: var(--primary);
+    }
+
+    .history-card-img {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      display: block;
+      background: var(--surface-container-highest);
+    }
+
+    .history-card-body {
+      padding: 0.9rem;
+    }
+
+    .history-card-top {
+      display: flex;
+      align-items: center;
+      gap: 0.55rem;
+      margin-bottom: 0.55rem;
+    }
+
+    .history-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--primary-container);
+      display: grid;
+      place-items: center;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      font-size: 0.8rem;
+      color: var(--on-primary-container);
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+
+    .history-avatar img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+
+    .history-meta {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .history-domain {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--primary);
+      text-transform: uppercase;
+    }
+
+    .history-time {
+      font-size: 0.68rem;
+      color: var(--on-surface-muted);
+    }
+
+    .history-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 700;
+      margin-bottom: 0.3rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-url {
+      font-size: 0.72rem;
+      color: var(--primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-type-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: var(--radius-pill);
+      background: var(--surface-container-highest);
+      color: var(--on-surface-variant);
+    }
+
+    /* ─── SETTINGS TAB ──────────────────────────────────────── */
+    .settings-layout {
+      max-width: 680px;
+    }
+
+    .settings-section {
+      margin-bottom: 2rem;
+    }
+
+    .settings-section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--primary);
+      margin-bottom: 0.6rem;
+    }
+
+    .settings-card {
+      background: var(--surface-container-low);
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .settings-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--surface-container-highest);
+      gap: 1rem;
+    }
+
+    .settings-row:last-child {
+      border-bottom: none;
+    }
+
+    .settings-row-text {
+      font-size: 0.9rem;
+    }
+
+    .settings-row-sub {
+      font-size: 0.78rem;
+      color: var(--on-surface-muted);
+      margin-top: 2px;
+    }
+
+    /* Toggle switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 46px;
+      height: 26px;
+      flex-shrink: 0;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: var(--outline-variant);
+      transition: .3s;
+      border-radius: 26px;
+    }
+
+    .slider::before {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      left: 3px;
+      bottom: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: .3s;
+      box-shadow: var(--shadow-xs);
+    }
+
+    input:checked+.slider {
+      background: var(--primary);
+    }
+
+    input:checked+.slider::before {
+      transform: translateX(20px);
+    }
+
+    .btn-danger {
+      background: var(--error-container);
+      color: var(--on-error-container);
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-md);
+      font-family: inherit;
+      font-weight: 600;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: opacity .2s;
+    }
+
+    .btn-danger:hover {
+      opacity: 0.85;
+    }
+
+    .about-version {
+      text-align: center;
+      padding: 1.5rem;
+      color: var(--on-surface-muted);
+      font-size: 0.85rem;
+    }
+
+    /* ─── PAGE TITLE AREA (History & Settings) ──────────────── */
+    .page-title {
+      font-size: clamp(1.5rem, 3vw, 2rem);
+      font-weight: 800;
+      margin-bottom: 0.4rem;
+    }
+
+    .page-subtitle {
+      font-size: 0.9rem;
+      color: var(--on-surface-muted);
+      margin-bottom: 2rem;
+    }
+
+    /* ─── RESPONSIVE ────────────────────────────────────────── */
+    @media (max-width: 640px) {
+      .top-nav {
+        display: none;
+      }
+
+      .bottom-nav {
+        display: flex;
+      }
+
+      .page-wrapper {
+        padding: 1.25rem 1rem 80px;
+      }
+
+      .hero-strip {
+        text-align: left;
+        margin-bottom: 1.5rem;
+      }
+
+      .hero-strip p {
+        max-width: none;
+      }
+
+      .settings-layout {
+        max-width: none;
+      }
+    }
+
+    @media (min-width: 641px) {
+      .top-nav {
+        display: flex;
+      }
+    }
+
+    /* ─── EMPTY STATE ───────────────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--on-surface-muted);
+    }
+
+    .empty-state-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .empty-state-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--on-surface);
+      margin-bottom: 0.4rem;
+    }
+
+    /* ─── SKELETON LOADING ──────────────────────────────────── */
+    @keyframes shimmer {
+      0% {
+        background-position: -600px 0;
+      }
+
+      100% {
+        background-position: 600px 0;
+      }
+    }
+
+    .skeleton {
+      background: linear-gradient(90deg,
+          var(--surface-container-highest) 25%,
+          var(--surface-container-high) 50%,
+          var(--surface-container-highest) 75%);
+      background-size: 600px 100%;
+      animation: shimmer 1.4s ease-in-out infinite;
+      border-radius: 6px;
+    }
+
+    .skeleton-card {
+      background: var(--surface-container-low);
+      border: 1px solid var(--outline-variant);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .skeleton-img {
+      width: 100%;
+      height: 180px;
+    }
+
+    .skeleton-body {
+      padding: 1.25rem;
+    }
+
+    .skeleton-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+
+    .skeleton-avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .skeleton-meta {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .skeleton-chip {
+      height: 16px;
+      width: 70px;
+      border-radius: var(--radius-pill);
+    }
+
+    .skeleton-title {
+      height: 18px;
+      width: 85%;
+    }
+
+    .skeleton-title-short {
+      height: 18px;
+      width: 55%;
+    }
+
+    .skeleton-lines {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      margin-bottom: 1.1rem;
+    }
+
+    .skeleton-line {
+      height: 13px;
+    }
+
+    .skeleton-line-short {
+      height: 13px;
+      width: 70%;
+    }
+
+    .skeleton-url-strip {
+      height: 44px;
+      border-radius: var(--radius-md);
+      margin-bottom: 1rem;
+    }
+
+    .skeleton-btns {
+      display: flex;
+      gap: 0.6rem;
+    }
+
+    .skeleton-btn {
+      height: 40px;
+      border-radius: var(--radius-pill);
+      flex: 1;
+    }
+
+    .skeleton-btn-sm {
+      height: 40px;
+      width: 44px;
+      border-radius: var(--radius-pill);
+      flex: none;
+    }
+
+    /* ─── TOAST NOTIFICATION ────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: var(--on-surface);
+      color: var(--surface);
+      padding: 0.65rem 1.25rem;
+      border-radius: var(--radius-pill);
+      font-size: 0.85rem;
+      font-weight: 600;
+      opacity: 0;
+      transition: opacity .3s, transform .3s;
+      pointer-events: none;
+      z-index: 999;
+      white-space: nowrap;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    @media (min-width: 641px) {
+      .toast {
+        bottom: 2rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ─── TOP NAV ─────────────────────────────────────────── -->
+  <nav class="top-nav" id="topNav">
+    <a href="#" class="nav-brand">
+      <div class="nav-brand-icon">🔗</div>
+      LinkPrecision
+    </a>
+    <ul class="nav-links">
+      <li><button class="active" data-tab="resolve" onclick="switchTab('resolve', this)">🔍 Resolve</button></li>
+      <li><button data-tab="history" onclick="switchTab('history', this)">🕒 History</button></li>
+      <li><button data-tab="settings" onclick="switchTab('settings', this)">⚙️ Settings</button></li>
+    </ul>
+    <div class="nav-spacer"></div>
+    <div class="nav-actions">
+      <button class="icon-btn" id="darkToggleBtn" title="Toggle dark mode" aria-label="Toggle dark mode"
+        onclick="toggleDark()">🌙</button>
+    </div>
+  </nav>
+
+  <!-- ─── MAIN CONTENT ────────────────────────────────────── -->
+  <main class="page-wrapper">
+
+    <!-- RESOLVE TAB -->
+    <div id="tab-resolve" class="tab-content active">
+      <div class="hero-strip">
+        <h1>Resolve <span class="gradient-text">any link</span> instantly.</h1>
+        <p>Expand tracking URLs, recover clean destinations, and get a rich preview in one click.</p>
+      </div>
+
+      <div class="resolve-grid">
+        <!-- Left: Input card -->
+        <div class="input-card">
+          <div class="input-card-title">🔗 Paste your URL</div>
+
+          <div class="url-input-wrap">
+            <svg class="url-input-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+            </svg>
+            <input type="text" id="urlInput" class="url-input" placeholder="https://l.facebook.com/l.php?u=..."
+              autocomplete="off" autocorrect="off" spellcheck="false">
+          </div>
+
+          <div class="input-actions">
+            <button class="btn btn-outline" id="pasteBtn" aria-label="Paste from clipboard">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="2" width="6" height="4" rx="1" />
+                <path d="M17 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+              </svg>
+              Paste
+            </button>
+            <button class="btn btn-primary" id="resolveBtn">
+              <span id="resolveText">Resolve Link</span>
+              <div id="resolveSpinner" class="spinner" style="display:none;"></div>
+              <svg id="resolveArrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M5 12h14" />
+                <path d="m12 5 7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+
+          <div class="resolve-tips">
+            <div class="tip-row"><span class="tip-badge">Supports</span> Facebook share & redirect links</div>
+            <div class="tip-row"><span class="tip-badge">Removes</span> Query string tracking parameters</div>
+            <div class="tip-row"><span class="tip-badge">Shows</span> OG title, description, and Facebook post images
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Result panel -->
+        <div class="result-panel" id="resultPanel">
+          <div class="result-placeholder" id="resultPlaceholder">
+            <div class="ph-icon">🔍</div>
+            <strong>Your resolved link will appear here</strong>
+            <span>Paste a URL and hit Resolve</span>
+          </div>
+
+          <!-- Skeleton loading card -->
+          <div id="skeletonCard" class="skeleton-card" style="display:none;">
+            <div class="skeleton skeleton-img"></div>
+            <div class="skeleton-body">
+              <div class="skeleton-header">
+                <div class="skeleton skeleton-avatar"></div>
+                <div class="skeleton-meta">
+                  <div class="skeleton skeleton-chip"></div>
+                  <div class="skeleton skeleton-title"></div>
+                  <div class="skeleton skeleton-title-short"></div>
+                </div>
+              </div>
+              <div class="skeleton-lines">
+                <div class="skeleton skeleton-line"></div>
+                <div class="skeleton skeleton-line"></div>
+                <div class="skeleton skeleton-line-short"></div>
+              </div>
+              <div class="skeleton skeleton-url-strip"></div>
+              <div class="skeleton-btns">
+                <div class="skeleton skeleton-btn"></div>
+                <div class="skeleton skeleton-btn"></div>
+                <div class="skeleton skeleton-btn-sm"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Success card (hidden until resolved) -->
+          <div id="successCard" class="preview-card" style="display:none;">
+            <img id="resImg" class="preview-og-img" src="" alt="Preview" style="display:none;">
+            <div class="preview-body">
+              <div class="preview-header">
+                <div class="avatar-circle" id="resAvatar">
+                  <img id="resAvatarImg" src="" alt="" style="display:none;">
+                  <span id="resAvatarLetter"></span>
+                </div>
+                <div class="preview-meta">
+                  <div id="resDomain" class="domain-chip">DOMAIN</div>
+                  <div id="resTitle" class="preview-title">Title</div>
+                </div>
+              </div>
+              <div id="resDesc" class="preview-desc"></div>
+
+              <div class="clean-url-strip">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary);flex-shrink:0">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                  <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                </svg>
+                <div class="url-text" id="resUrl"></div>
+                <button class="copy-inline-btn" id="copyInlineBtn">Copy</button>
+              </div>
+
+              <div class="preview-cta-row">
+                <button class="btn btn-primary" id="copyBtn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                  Copy Link
+                </button>
+                <button class="btn btn-outline" id="shareBtn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="18" cy="5" r="3" />
+                    <circle cx="6" cy="12" r="3" />
+                    <circle cx="18" cy="19" r="3" />
+                    <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                    <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+                  </svg>
+                  Share
+                </button>
+                <button class="btn btn-ghost" id="openBtn" title="Open in new tab">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                    <polyline points="15 3 21 3 21 9" />
+                    <line x1="10" y1="14" x2="21" y2="3" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Error card -->
+          <div id="errorCard" class="error-card" style="display:none;">
+            <span class="error-card-icon">⚠️</span>
+            <div>
+              <strong>Could not resolve</strong><br>
+              <span id="errorMsg" style="font-size:0.875rem;">Failed to resolve link.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY TAB -->
+    <div id="tab-history" class="tab-content">
+      <div class="history-header-row">
+        <div>
+          <h2 class="page-title">History</h2>
+          <p class="page-subtitle" style="margin-bottom:0;">Previously resolved links</p>
+        </div>
+        <button class="btn btn-danger" id="clearHistoryBtn">Clear All</button>
+      </div>
+      <div class="history-grid" id="historyList"></div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div id="tab-settings" class="tab-content">
+      <h2 class="page-title">Settings</h2>
+      <p class="page-subtitle">Manage your preferences and data</p>
+
+      <div class="settings-layout">
+        <div class="settings-section">
+          <div class="settings-section-label">General</div>
+          <div class="settings-card">
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-text">Auto-resolve on paste</div>
+                <div class="settings-row-sub">Automatically resolves URL after pasting</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="autoResolveToggle" checked>
+                <span class="slider"></span>
+              </label>
+            </div>
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-text">Dark Mode</div>
+                <div class="settings-row-sub">Switch to dark color theme</div>
+              </div>
+              <label class="switch">
+                <input type="checkbox" id="darkModeToggle">
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-label">Data & Privacy</div>
+          <div class="settings-card">
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-text">Clear History</div>
+                <div class="settings-row-sub">Remove all saved resolved links</div>
+              </div>
+              <button class="btn-danger" id="settingsClearBtn">Clear Data</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <div class="settings-section-label">About</div>
+          <div class="settings-card">
+            <div class="settings-row">
+              <div>
+                <div class="settings-row-text">LinkPrecision</div>
+                <div class="settings-row-sub">Clean URL resolver & link previewer</div>
+              </div>
+              <span style="font-size:0.82rem;color:var(--on-surface-muted);">v1.0.0 Web</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ─── BOTTOM NAV (mobile) ──────────────────────────────── -->
+  <nav class="bottom-nav" id="bottomNav">
+    <button class="bnav-item active" data-tab="resolve" onclick="switchTab('resolve', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8" />
+        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+      </svg>
+      <span class="bnav-label">Resolve</span>
+    </button>
+    <button class="bnav-item" data-tab="history" onclick="switchTab('history', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <polyline points="12 6 12 12 16 14" />
+      </svg>
+      <span class="bnav-label">History</span>
+    </button>
+    <button class="bnav-item" data-tab="settings" onclick="switchTab('settings', this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3" />
+        <path d="M19.07 4.93A10 10 0 0 0 4.93 19.07M4.93 4.93A10 10 0 0 0 19.07 19.07" />
+      </svg>
+      <span class="bnav-label">Settings</span>
+    </button>
+  </nav>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ─── TAB SWITCHING ──────────────────────────────────────────
+    function switchTab(tabId, triggerEl) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.getElementById(`tab-${tabId}`).classList.add('active');
+
+      // Top nav active state
+      document.querySelectorAll('.nav-links button').forEach(b => b.classList.remove('active'));
+      // Bottom nav active state
+      document.querySelectorAll('.bnav-item').forEach(b => b.classList.remove('active'));
+
+      if (triggerEl) triggerEl.classList.add('active');
+      // Sync the other nav
+      document.querySelectorAll(`[data-tab="${tabId}"]`).forEach(el => el.classList.add('active'));
+
+      if (tabId === 'history') loadHistory();
+    }
+
+    // ─── DARK MODE ──────────────────────────────────────────────
+    function toggleDark() {
+      const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+      setDark(!isDark);
+    }
+
+    function setDark(isDark) {
+      if (isDark) document.documentElement.setAttribute('data-theme', 'dark');
+      else document.documentElement.removeAttribute('data-theme');
+      localStorage.setItem('darkMode', isDark);
+      document.getElementById('darkModeToggle').checked = isDark;
+      document.getElementById('darkToggleBtn').textContent = isDark ? '☀️' : '🌙';
+    }
+
+    function loadSettings() {
+      const dark = localStorage.getItem('darkMode') === 'true';
+      setDark(dark);
+
+      const autoRes = localStorage.getItem('autoResolve') !== 'false';
+      document.getElementById('autoResolveToggle').checked = autoRes;
+    }
+
+    document.getElementById('darkModeToggle').addEventListener('change', e => setDark(e.target.checked));
+    document.getElementById('autoResolveToggle').addEventListener('change', e => {
+      localStorage.setItem('autoResolve', e.target.checked);
+    });
+
+    // ─── SCROLL GLASS NAV ───────────────────────────────────────
+    window.addEventListener('scroll', () => {
+      document.getElementById('topNav').classList.toggle('scrolled', window.scrollY > 8);
+    }, { passive: true });
+
+    // ─── TOAST ──────────────────────────────────────────────────
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2000);
+    }
+
+    // ─── HISTORY ────────────────────────────────────────────────
+    function getHistory() { return JSON.parse(localStorage.getItem('history') || '[]'); }
+    function addHistory(item) {
+      const h = getHistory();
+      h.unshift(item);
+      localStorage.setItem('history', JSON.stringify(h.slice(0, 100)));
+    }
+    function clearHistory() {
+      localStorage.removeItem('history');
+      loadHistory();
+      showToast('History cleared');
+    }
+
+    document.getElementById('clearHistoryBtn').addEventListener('click', clearHistory);
+    document.getElementById('settingsClearBtn').addEventListener('click', clearHistory);
+
+    function timeAgo(d) {
+      const s = (Date.now() - new Date(d)) / 1000;
+      if (s < 60) return 'just now';
+      if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+      if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+      return `${Math.floor(s / 86400)}d ago`;
+    }
+
+    function getTypeBadge(domain = '') {
+      if (domain.includes('youtube') || domain.includes('youtu.be')) return 'VIDEO';
+      if (domain.includes('amazon.')) return 'PRODUCT';
+      if (domain.includes('facebook') || domain.includes('instagram')) return 'SOCIAL';
+      return 'ARTICLE';
+    }
+
+    function loadHistory() {
+      const list = document.getElementById('historyList');
+      const items = getHistory();
+      if (!items.length) {
+        list.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+          <div class="empty-state-icon">🕒</div>
+          <div class="empty-state-title">No history yet</div>
+          <p>Resolved links will appear here.</p>
+        </div>`;
+        return;
+      }
+
+      list.innerHTML = items.map(item => {
+        const letter = (item.title || item.domain || '?')[0].toUpperCase();
+        const displayImg = item.image || item.avatar;
+        const avatarHtml = displayImg
+          ? `<div class="history-avatar"><img src="${displayImg}" referrerpolicy="no-referrer" alt="" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><span style="display:none;">${letter}</span></div>`
+          : `<div class="history-avatar">${letter}</div>`;
+
+        const imgHtml = item.image
+          ? `<img class="history-card-img" src="${item.image}" referrerpolicy="no-referrer" alt="" onerror="this.style.display='none';">`
+          : '';
+
+        return `
+          <div class="history-card" onclick="window.open('${escHtml(item.resolvedUrl)}','_blank')" role="button" tabindex="0"
+               onkeydown="if(event.key==='Enter')window.open('${escHtml(item.resolvedUrl)}','_blank')">
+            ${imgHtml}
+            <div class="history-card-body">
+              <div class="history-card-top">
+                ${avatarHtml}
+                <div class="history-meta">
+                  <div class="history-domain">${escHtml(item.domain || '')}</div>
+                  <div class="history-time">${timeAgo(item.timestamp)}</div>
+                </div>
+                <span class="history-type-badge">${getTypeBadge(item.domain)}</span>
+              </div>
+              <div class="history-title">${escHtml(item.title || 'No Title')}</div>
+              <div class="history-url">${escHtml(item.resolvedUrl)}</div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function escHtml(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // ─── RESOLVER ───────────────────────────────────────────────
+    const urlInput = document.getElementById('urlInput');
+    const resolveBtn = document.getElementById('resolveBtn');
+    const pasteBtn = document.getElementById('pasteBtn');
+    const successCard = document.getElementById('successCard');
+    const errorCard = document.getElementById('errorCard');
+    const placeholder = document.getElementById('resultPlaceholder');
+    const skeletonCard = document.getElementById('skeletonCard');
+
+    pasteBtn.addEventListener('click', async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        urlInput.value = text;
+        if (localStorage.getItem('autoResolve') !== 'false') doResolve();
+      } catch {
+        showToast('Could not access clipboard — paste manually.');
+      }
+    });
+
+    resolveBtn.addEventListener('click', doResolve);
+    urlInput.addEventListener('keypress', e => { if (e.key === 'Enter') doResolve(); });
+
+    async function doResolve() {
+      const url = urlInput.value.trim();
+      if (!url) { showToast('Please enter a URL first.'); return; }
+
+      // Loading state
+      resolveBtn.disabled = true;
+      document.getElementById('resolveText').style.display = 'none';
+      document.getElementById('resolveSpinner').style.display = 'inline-block';
+      document.getElementById('resolveArrow').style.display = 'none';
+      placeholder.style.display = 'none';
+      successCard.style.display = 'none';
+      errorCard.style.display = 'none';
+      skeletonCard.style.display = 'block';
+
+      try {
+        const res = await fetch('/resolve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        const data = await res.json();
+
+        if (res.ok && data.status === 'success') {
+          const domain = new URL(data.url).hostname.replace('www.', '');
+
+          document.getElementById('resDomain').textContent = domain;
+          document.getElementById('resTitle').textContent = data.title || 'No Title';
+
+          const desc = document.getElementById('resDesc');
+          desc.textContent = data.description || '';
+          desc.style.display = data.description ? '-webkit-box' : 'none';
+
+          document.getElementById('resUrl').textContent = data.url;
+
+          // OG image
+          const resImg = document.getElementById('resImg');
+          if (data.image) {
+            resImg.src = data.image;
+            resImg.referrerPolicy = 'no-referrer';
+            resImg.style.display = 'block';
+          } else {
+            resImg.style.display = 'none';
+          }
+
+          // Avatar
+          const avatarImg = document.getElementById('resAvatarImg');
+          const avatarLetter = document.getElementById('resAvatarLetter');
+          const fallback = (data.title || domain || '?')[0].toUpperCase();
+          avatarLetter.textContent = fallback;
+          avatarLetter.style.display = 'inline';
+          avatarImg.style.display = 'none';
+          if (data.avatar) {
+            avatarImg.onload = () => { avatarImg.style.display = 'block'; avatarLetter.style.display = 'none'; };
+            avatarImg.onerror = () => { avatarImg.style.display = 'none'; avatarLetter.style.display = 'inline'; };
+            avatarImg.src = data.avatar;
+            avatarImg.referrerPolicy = 'no-referrer';
+          }
+
+          successCard.style.display = 'block';
+
+          // Save history
+          addHistory({
+            originalUrl: url,
+            resolvedUrl: data.url,
+            title: data.title,
+            description: data.description,
+            domain,
+            avatar: data.avatar,
+            image: data.image,
+            timestamp: new Date().toISOString()
+          });
+
+          // Button handlers
+          const copyAction = () => { navigator.clipboard.writeText(data.url); showToast('✓ Copied to clipboard!'); };
+          document.getElementById('copyBtn').onclick = copyAction;
+          document.getElementById('copyInlineBtn').onclick = copyAction;
+          document.getElementById('openBtn').onclick = () => window.open(data.url, '_blank');
+          document.getElementById('shareBtn').onclick = () => {
+            if (navigator.share) navigator.share({ url: data.url, title: data.title });
+            else copyAction();
+          };
+
+        } else {
+          errorCard.style.display = 'block';
+          document.getElementById('errorMsg').textContent = data.message || 'Failed to resolve link.';
+        }
+
+      } catch {
+        errorCard.style.display = 'block';
+        document.getElementById('errorMsg').textContent = 'Network error — could not reach the backend.';
+      } finally {
+        resolveBtn.disabled = false;
+        document.getElementById('resolveText').style.display = 'inline';
+        document.getElementById('resolveSpinner').style.display = 'none';
+        document.getElementById('resolveArrow').style.display = 'inline';
+        skeletonCard.style.display = 'none';
+      }
+    }
+
+    // ─── INIT ────────────────────────────────────────────────────
+    loadSettings();
+  </script>
+</body>
+
+</html>
