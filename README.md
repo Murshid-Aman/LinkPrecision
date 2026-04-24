@@ -105,4 +105,4 @@ Facebook share links go through up to 4 strategies before giving up:
 
 ## 📄 License
 
-MIT
+This project is licensed under the MIT License - see the LICENSE file for details.
